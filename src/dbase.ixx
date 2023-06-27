@@ -25,6 +25,7 @@ module;
 
 #include <iostream>
 #include <vector>
+#include <memory>
 #include <pqxx/pqxx>
 
 export module dbase;
@@ -48,11 +49,6 @@ namespace jinx
 		Вывод информации о пользователе
 		*/
 		void get_user(std::string);
-
-		/*
-		Изменить данные для подключения к базе данных
-		*/
-		void change_connection_settings(std::string, std::string, std::string);
 
 		/*
 		Добавить нового клиента
@@ -103,6 +99,8 @@ namespace jinx
 		std::string _dbuser;
 		std::string _dbpasswd;
 
+		std::unique_ptr<pqxx::connection> con;
+
 		// private methods
 
 		void make_tables();
@@ -113,33 +111,32 @@ namespace jinx
 	{
 		// test con & create tables if not exist
 
-		make_tables();
-
-	} // MAIN CONSTRUCTOR FUNC ------------------------------------------------------------------------------
-
-	void DBASE::change_connection_settings(std::string dbname, std::string dbuser, std::string dbpasswd)
-	{
-		_dbname = dbname;
-		_dbuser = dbuser;
-		_dbpasswd = dbpasswd;
-	} // !change_connection_settings ------------------------------------------------------------------------------
-
-	void DBASE::make_tables()
-	{
-		pqxx::connection con
-		(
+		con = std::make_unique<pqxx::connection>
+			(
 			"host=127.0.0.1 "
 			"port=5432 "
 			"dbname=" + _dbname + " "
 			"user=" + _dbuser + " "
 			"password=" + _dbpasswd
-		);
+			);
 
-		pqxx::work tx1(con);
+		con->prepare("insert_user", "insert into dbusers (fname, lname, email) values ($1, $2, $3)");
+		con->prepare("insert_phone", "insert into dbphones (userid, phonenum) values($1, $2)");
+		con->prepare("change_fname", "update dbusers set fname = $1 where userid = $2;");
+		con->prepare("change_lname", "update dbusers set lname = $1 where userid = $2;");
+		con->prepare("change_email", "update dbusers set email = $1 where userid = $2;");
+
+		make_tables();
+
+	} // MAIN CONSTRUCTOR FUNC ------------------------------------------------------------------------------
+
+	void DBASE::make_tables()
+	{		
+		pqxx::work tx1(*con);
 		tx1.exec("CREATE table if not exists dbusers (userid serial primary key, fname varchar(60) not null, lname varchar(60) not null, email varchar(60) not null); ");
 		tx1.commit();
 
-		pqxx::work tx2(con);
+		pqxx::work tx2(*con);
 		tx2.exec("create table if not exists dbphones (userid integer references dbusers(userid) not null, phonenum varchar(60) not null); ");
 		tx2.commit();
 	} // !make_tables  ------------------------------------------------------------------------------
@@ -222,19 +219,7 @@ namespace jinx
 
 		// ADDING TO TABLE
 
-		pqxx::connection con
-		(
-			"host=127.0.0.1 "
-			"port=5432 "
-			"dbname=" + _dbname + " "
-			"user=" + _dbuser + " "
-			"password=" + _dbpasswd
-		);
-
-		con.prepare("insert_user", "insert into dbusers (fname, lname, email) values ($1, $2, $3)");
-		con.prepare("insert_phone", "insert into dbphones (userid, phonenum) values($1, $2)");
-
-		pqxx::work tx1(con);
+		pqxx::work tx1(*con);
 
 		// tx1.exec("insert into dbusers (fname, lname, email) values ('" + fname + "', '" + lname + "', '" + email + "');");
 		tx1.exec_prepared("insert_user", fname, lname, email);
@@ -244,7 +229,7 @@ namespace jinx
 
 		if (addPhones)
 		{
-			pqxx::work tx2(con);
+			pqxx::work tx2(*con);
 			std::string userid;
 
 			userid = tx2.query_value<std::string>("select userid from dbusers where fname = '" + fname + "' AND lname = '" + lname + "' AND email = '" + email + "'");
@@ -253,7 +238,7 @@ namespace jinx
 
 			for (const auto& val : phones)
 			{
-				pqxx::work tx3(con);
+				pqxx::work tx3(*con);
 				// tx3.exec("insert into dbphones (userid, phonenum) values('" + userid + "', '" + val + "');");
 				tx3.exec_prepared("insert_phone", userid, val);
 				tx3.commit();
@@ -326,24 +311,13 @@ namespace jinx
 
 		// ADDING TO TABLE
 
-		pqxx::connection con
-		(
-			"host=127.0.0.1 "
-			"port=5432 "
-			"dbname=" + _dbname + " "
-			"user=" + _dbuser + " "
-			"password=" + _dbpasswd
-		);
-
-		con.prepare("insert_phone", "insert into dbphones (userid, phonenum) values($1, $2)");
-
 		// if phones are added
 
 		if (addPhones)
 		{
 			for (const auto& val : phones)
 			{
-				pqxx::work tx(con);
+				pqxx::work tx(*con);
 				tx.exec_prepared("insert_phone", userid, val);
 				tx.commit();
 			}
@@ -359,17 +333,7 @@ namespace jinx
 	*/
 	void DBASE::print_db()
 	{
-		pqxx::connection con
-		(
-			"host=127.0.0.1 "
-			"port=5432 "
-			"dbname=" + _dbname + " "
-			"user=" + _dbuser + " "
-			"password=" + _dbpasswd
-		);
-
-
-		pqxx::work tx(con);
+		pqxx::work tx(*con);
 		std::cout << "| ID |\t ИМЯ \t|\t ФАМИЛИЯ \t|\t EMAIL \t|\tТЕЛЕФОНЫ (Опц) \t\n";
 
 		for (auto [id, fname, lname, email] : tx.query<std::string, std::string, std::string, std::string>("select userid, fname, lname, email from dbusers	order by userid asc;"))
@@ -389,16 +353,7 @@ namespace jinx
 	*/
 	void DBASE::get_user(std::string userid)
 	{
-		pqxx::connection con
-		(
-			"host=127.0.0.1 "
-			"port=5432 "
-			"dbname=" + _dbname + " "
-			"user=" + _dbuser + " "
-			"password=" + _dbpasswd
-		);
-
-		pqxx::work tx(con);
+		pqxx::work tx(*con);
 		std::cout << "ВЫБРАН ПОЛЬЗОВАТЕЛЬ: \n";
 		std::cout << "| ID |\t ИМЯ \t|\t ФАМИЛИЯ \t|\t ТЕЛЕФОНЫ (Опц) \t\n";
 
@@ -421,16 +376,7 @@ namespace jinx
 		this->get_user(userid);
 		std::cout << '\n';
 		int selector;
-		std::string userInput;
-
-		pqxx::connection con
-		(
-			"host=127.0.0.1 "
-			"port=5432 "
-			"dbname=" + _dbname + " "
-			"user=" + _dbuser + " "
-			"password=" + _dbpasswd
-		);
+		std::string userInput;		
 
 		std::cout << "Выберите что необходимо изменить.\n";
 		std::cout << " - 1) Имя\n"
@@ -441,11 +387,7 @@ namespace jinx
 		std::cout << " Выберите действие (1-4, 0 - отмена): ";
 		std::cin >> selector;
 
-		con.prepare("change_fname", "update dbusers set fname = $1 where userid = $2;");
-		con.prepare("change_lname", "update dbusers set lname = $1 where userid = $2;");
-		con.prepare("change_email", "update dbusers set email = $1 where userid = $2;");
-
-		pqxx::work tx(con);
+		pqxx::work tx(*con);
 
 		switch (selector)
 		{
@@ -504,16 +446,7 @@ namespace jinx
 
 			if (select == 'Y' || select == 'y')
 			{
-				pqxx::connection con
-				(
-					"host=127.0.0.1 "
-					"port=5432 "
-					"dbname=" + _dbname + " "
-					"user=" + _dbuser + " "
-					"password=" + _dbpasswd
-				);
-
-				pqxx::work tx(con);
+				pqxx::work tx(*con);
 
 				// remove and add new phones
 				tx.exec("delete from dbphones where userid=" + userid);
@@ -548,16 +481,7 @@ namespace jinx
 
 			if (select == 'Y' || select == 'y')
 			{
-				pqxx::connection con
-				(
-					"host=127.0.0.1 "
-					"port=5432 "
-					"dbname=" + _dbname + " "
-					"user=" + _dbuser + " "
-					"password=" + _dbpasswd
-				);
-
-				pqxx::work tx(con);
+				pqxx::work tx(*con);
 
 				// remove and add new phones
 				tx.exec("delete from dbphones where userid=" + userid);
@@ -581,18 +505,9 @@ namespace jinx
 	{
 		std::string keyword;
 		std::cout << "\nВведите ключ поиска: ";
-		std::cin >> keyword;
+		std::cin >> keyword;		
 
-		pqxx::connection con
-		(
-			"host=127.0.0.1 "
-			"port=5432 "
-			"dbname=" + _dbname + " "
-			"user=" + _dbuser + " "
-			"password=" + _dbpasswd
-		);
-
-		pqxx::work tx(con);
+		pqxx::work tx(*con);
 
 		std::cout << "Результаты поиска:\n\n";
 
