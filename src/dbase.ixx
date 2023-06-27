@@ -244,10 +244,7 @@ namespace jinx
 				tx3.commit();
 			}
 
-		} // if (addPhones)
-
-		std::cout << "\nОперация выполнена!\n";
-		std::system("pause");
+		} // if (addPhones)		
 
 	} // !add_client() ------------------------------------------------------------------------------
 
@@ -323,9 +320,6 @@ namespace jinx
 			}
 		} // if (addPhones)	
 
-		std::cout << "\nОперация выполнена!\n";
-		std::system("pause");
-
 	} //!add_phone ------------------------------------------------------------------------------
 
 	/*
@@ -334,7 +328,7 @@ namespace jinx
 	void DBASE::print_db()
 	{
 		pqxx::work tx(*con);
-		std::cout << "| ID |\t ИМЯ \t|\t ФАМИЛИЯ \t|\t EMAIL \t|\tТЕЛЕФОНЫ (Опц) \t\n";
+		std::cout << "| ID |\tИМЯ\t|\tФАМИЛИЯ\t\t|\tEMAIL\t\t|\t\tТЕЛЕФОНЫ (Опц)\n";
 
 		for (auto [id, fname, lname, email] : tx.query<std::string, std::string, std::string, std::string>("select userid, fname, lname, email from dbusers	order by userid asc;"))
 		{
@@ -345,7 +339,7 @@ namespace jinx
 			}
 			std::cout << '\n';
 		}
-		std::cout << "\n|____|________________________________________________\n\n";
+		std::cout << "\n|____|____________________________________________________________________________________\n\n";
 	} // !print_db ------------------------------------------------------------------------------
 
 	/*
@@ -355,17 +349,17 @@ namespace jinx
 	{
 		pqxx::work tx(*con);
 		std::cout << "ВЫБРАН ПОЛЬЗОВАТЕЛЬ: \n";
-		std::cout << "| ID |\t ИМЯ \t|\t ФАМИЛИЯ \t|\t ТЕЛЕФОНЫ (Опц) \t\n";
+		std::cout << "| ID |\tИМЯ\t|\tФАМИЛИЯ\t\t|\tEMAIL\t\t|\t\tТЕЛЕФОНЫ (Опц)\n";
 
 		for (auto [id, fname, lname, email] : tx.query<std::string, std::string, std::string, std::string>("select userid, fname, lname, email from dbusers where userid =" + userid + " order by userid asc"))
 		{
-			std::cout << " " << id << " \t" << fname << "\t\t" << lname << "\t\t" << email << "\t\t";
+			std::cout << " " << id << "\t\t" << fname << "\t\t\t" << lname << "\t\t\t" << email << "\t\t\t";
 			for (auto phone : tx.query<std::string>("select phonenum from dbphones where userid=" + id))
 			{
 				std::cout << ' ' << std::get<0>(phone) << ' ';
 			}
 		}
-		std::cout << "\n|____|________________________________________________\n\n";
+		std::cout << "\n|____|____________________________________________________________________________________\n\n";
 	} // !get_user ------------------------------------------------------------------------------
 
 	/*
@@ -425,9 +419,7 @@ namespace jinx
 			std::cout << "\n - Unforseen Consequenes - \n";
 			break;			
 		}
-
-		std::cout << "\nОперация выполнена!\n";
-		std::system("pause");
+		
 	} // !change_user ------------------------------------------------------------------------------
 
 	/*
@@ -459,9 +451,7 @@ namespace jinx
 			}
 
 		} while (select != 'Y' && select != 'y' && select != 'N' && select != 'n');
-
-		std::cout << "\nОперация выполнена!\n";
-		std::system("pause");
+		
 	} // !delete_user ------------------------------------------------------------------------------
 
 
@@ -492,10 +482,7 @@ namespace jinx
 				// skip adding phone
 			}
 		} while (select != 'Y' && select != 'y' && select != 'N' && select != 'n');
-
-		std::cout << "\nОперация выполнена!\n";
-		std::system("pause");
-			
+					
 	} // !remove_phones ------------------------------------------------------------------------------
 
 	/*
@@ -559,10 +546,7 @@ namespace jinx
 
 		} // !searchmode == 3
 
-		std::cout << "\n|____|________________________________________________\n\n";
-
-		std::cout << "\nОперация выполнена!\n";
-		std::system("pause");
+		std::cout << "\n|____|________________________________________________\n\n";		
 
 	} // !search() ------------------------------------------------------------------------------------------------------------------------------
 
